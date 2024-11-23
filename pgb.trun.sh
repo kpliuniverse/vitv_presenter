@@ -1,0 +1,1 @@
+.venv/bin/python src/pagebrowser/main.py

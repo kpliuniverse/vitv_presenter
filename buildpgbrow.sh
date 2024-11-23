@@ -1,0 +1,1 @@
+pyinstaller --onefile --noconsole ./src/pagebrowser/main.py --distpath ./testdist/pagebrowser --workpath ./build/testpgbrow/temp
