@@ -42,8 +42,11 @@ if __name__ == "__main__":
     cq.push(Anon(15, True))
     cq.insert(Anon(16, False), 1)
     cq.insert(Anon(17, False), 0)
-    for i in cq:
-        print(i)
+    cq.swap(5, 12)
+    cq.swap(11, 12)
+    cq.move(12, 0)
+    for n, i in enumerate(cq):
+        print(f"{n}: {i}")
     
 
     print("what")

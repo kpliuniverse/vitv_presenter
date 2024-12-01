@@ -1,6 +1,7 @@
 
 from copy import deepcopy
 from dataclasses import dataclass
+import gc
 import sys
 from typing import Callable
 
@@ -71,9 +72,20 @@ class CRQPosTracker:
     private_next_coord: TableCoord = None   
 
 
+
+CRL_CHECK_INTERVAL: int = 5 
 #WOW around 179 lines of code without testing
 class ClusteredReclaimingList:
-    
+    #TODO LATER: auto delete empty rows
+    #Complications:
+    #       - Needs to delete reclaim_slots referencing row, and this causes holes, as the queue is expected to be continuous
+    # Example situation: 
+    # Reclaim Slot Rows: A, C, C, B, A, C, A, A, B, B
+    # Delete row C
+    # Reclaim Slot Rows: A, [], [], B, A, [], A, A, B, B
+    # Might result in returning empty reclaim coordinates
+    # Solution:
+    #  clqsol.xlsx
     def print(self):
         print(f"length: {self.length}")
         print(f"cluster_size: {self.cluster_size}, exact_type_size: {self.exact_type_size}")
@@ -81,10 +93,11 @@ class ClusteredReclaimingList:
         print(f"reclaim_slots (length {self.reclaim_queue_len}/{self.reclaim_slots} max): {self.reclaim_queue}")
         print(f"has discarded a reclaim_slot = {self.discarded_reclaim_spot}")
         print(f"Contents:")
-        for cluster in self.table:
+        for cluster in self.__table:
             print(cluster)
 
     def __init__ (self, reclaim_slots: int, cluster_size: int, exact_type_size: int, none_object_creation_call: Callable[[], object]):
+        self.check_interval_cur = 0
         self.is_itering = False
         self.reclaim_slots =  reclaim_slots
         self.reclaim_queue: tuple[ReclaimCoord] = tuple(ReclaimCoord(0, 0, False) for _ in range(reclaim_slots))
@@ -92,7 +105,7 @@ class ClusteredReclaimingList:
         self.cluster_size: int = cluster_size
         self.none_object_creation_call = none_object_creation_call
         self.exact_type_size: int = exact_type_size
-        self.table: list[list[CRQPosTracker]] = [self.__return_empty_cluster(self.cluster_size)]
+        self.__table: list[list[CRQPosTracker]] = [self.__return_empty_cluster(self.cluster_size)]
         
         self.last_nonfree_pos: TableCoord = TableCoord(0, 0)
         self.first_coord: TableCoord = TableCoord.copy(self.last_nonfree_pos)
@@ -106,6 +119,7 @@ class ClusteredReclaimingList:
         for i in range(self.length):
             y = self.__fetch_w_coord(cur_coord)
             cur_coord = y.private_next_coord
+            #y.crq_print()
             yield y
         self.is_itering = False
 
@@ -136,8 +150,8 @@ class ClusteredReclaimingList:
             raise ValueError (f"Object must inherit from CRQPosTracker. It seems {item} is not")
         if sys.getsizeof(item) != self.exact_type_size:
             raise ValueError (f"Object not the exact size as specified. {sys.getsizeof(item)}B sized appendage to collection {self.exact_type_size}B items ")
-        if (self.last_nonfree_pos.super_ind == len(self.table)):
-            self.table.append(self.__return_empty_cluster(self.cluster_size))
+        if (self.last_nonfree_pos.super_ind == len(self.__table)):
+            self.__table.append(self.__return_empty_cluster(self.cluster_size))
         if self.discarded_reclaim_spot and self.reclaim_queue_len == 0:
             self.__single_reclaim_add_from_find()
         coord_to_put: TableCoord = self.__get_free_coord()
@@ -169,8 +183,8 @@ class ClusteredReclaimingList:
             raise ValueError (f"Object must inherit from CRQPosTracker. It seems {item} is not")
         if sys.getsizeof(item) != self.exact_type_size:
             raise ValueError (f"Object not the exact size as specified. {sys.getsizeof(item)}B sized appendage to collection {self.exact_type_size}B items ")
-        if (self.last_nonfree_pos.super_ind == len(self.table)):
-            self.table.append(self.__return_empty_cluster(self.cluster_size))
+        if (self.last_nonfree_pos.super_ind == len(self.__table)):
+            self.__table.append(self.__return_empty_cluster(self.cluster_size))
         if self.discarded_reclaim_spot and self.reclaim_queue_len == 0:
             self.__single_reclaim_add_from_find()
         
@@ -232,8 +246,8 @@ class ClusteredReclaimingList:
     def __return_closest_reclaim(self) -> None | tuple[ReclaimCoord, int]:
         if (self.length == 0):
             return None
-        out = ReclaimCoord(len(self.table), self.cluster_size, True)
-        min_table_index: int = self.__calc_table_index(TableCoord(len(self.table) -1, self.cluster_size - 1))
+        out = ReclaimCoord(len(self.__table), self.cluster_size, True)
+        min_table_index: int = self.__calc_table_index(TableCoord(len(self.__table) -1, self.cluster_size - 1))
         for i in range(self.reclaim_queue_len):
             
             cur_recl_coord: ReclaimCoord = self.reclaim_queue[i]
@@ -263,15 +277,27 @@ class ClusteredReclaimingList:
                 return False
         return True
 
+    @staticmethod
+    def __shift_up_by_one_if_equal_or_more(x: TableCoord, threshold: int) -> None:
+        if (x.super_ind >= threshold):
+            x.shift_add(super_ind=-1)
+    def __remove_row(self, super_ind: int):
+        self.__table.pop(super_ind)
+        for row in self.__table[super_ind:]:
+            item: CRQPosTracker
+            for item in row:
+                for c in (item.private_crq_coord, item.private_next_coord, item.private_prev_coord):
+                    self.__shift_up_by_one_if_equal_or_more(c, super_ind)
+        gc.collect()
 
     def remove(self, index):
         if self.is_itering:
             raise ValueError("Cannot remove while iterating.")
+        if (index > self.length - 1):
+            raise IndexError(f"Index out of range.")
         coord = self.__index_to_tablecoord(index)
         self.__reclaim_append(coord)
         self.length -= 1
-        if (index == 0 and self.length == 0):
-            pass
 
         if (index == 0):
             tb_delete = TableCoord.copy(self.first_coord)
@@ -296,9 +322,17 @@ class ClusteredReclaimingList:
         self.__place_w_coord(self.none_object_creation_call(), coord)
         prev_x.private_next_coord.replace(next_coord)
         next_x.private_prev_coord.replace(prev_coord)
-        # TODO: If row empty, remove it, then shift affected rows and stuff
-        # if self.check_if_empty_row(c:= self.table[coord.super_ind]):
-        #     c.remove(self.table)
+        if self.check_interval_cur >= CRL_CHECK_INTERVAL:
+            self.check_interval_cur = 0
+            
+        
+        if self.check_interval_cur >= CRL_CHECK_INTERVAL:
+            pass
+            # if self.__check_if_empty_row(c:= self.__table[coord.super_ind]):
+            #     self.__remove_row(coord.super_ind)
+        else:
+            self.check_interval_cur += 1
+        
 
         
     def __len__(self):
@@ -315,15 +349,101 @@ class ClusteredReclaimingList:
         if (replaced_with := self.__find_for_reclaim()) is not None:   
             #print(f"{replaced_with=}") 
             self.__reclaim_append(replaced_with)
+
+
+    def swap(self, a_ind: int , b_ind: int):
+        if self.is_itering:
+            raise ValueError("Cannot swap while iterating.")
+        if (a_ind > self.length - 1 or b_ind > self.length - 1):
+            raise IndexError(f"Index out of range.")
+        if (a_ind == b_ind):
+            return
+        
+        if (abs(a_ind - b_ind) == 1) and (a_ind > b_ind):
+            __a_ind, __b_ind = b_ind, a_ind
+        else:
+            __a_ind, __b_ind = a_ind, b_ind
+        a_coord = TableCoord.copy(self.__index_to_tablecoord(__a_ind))
+        
+        b_coord = TableCoord.copy(self.__index_to_tablecoord(__b_ind))
+        a_item = self.__fetch_w_coord(a_coord)
+        b_item = self.__fetch_w_coord(b_coord)
+        a_prev_coord = TableCoord.copy(a_item.private_prev_coord) if a_item.private_prev_coord else None
+        a_next_coord = TableCoord.copy(a_item.private_next_coord) if a_item.private_next_coord else None
+        b_prev_coord = TableCoord.copy(b_item.private_prev_coord) if b_item.private_prev_coord else None
+        b_next_coord = TableCoord.copy(b_item.private_next_coord) if b_item.private_next_coord else None
+        #TODO: Fix bug when lower = 0
+        if (abs(__a_ind - __b_ind) == 1):
+            #print("Before:")
+            #a_item.crq_print()
+            #b_item.crq_print()
+            #print("---------------------------")
+            if a_item.private_prev_coord:
+                self.__fetch_w_coord(a_item.private_prev_coord).private_next_coord = deepcopy(b_coord)
+
+            a_item.private_prev_coord = deepcopy(b_coord)
+            if a_item.private_next_coord:
+                #print(f"{b_prev_coord=}")
+                #print(f"{a_prev_coord=}")
+                #print(f"{b_next_coord=}")
+                #print(f"{a_next_coord=}")
+                a_item.private_next_coord = deepcopy(b_next_coord)
+            if b_item.private_prev_coord:
+                b_item.private_prev_coord = deepcopy(a_prev_coord)
+            if b_item.private_next_coord:
+                self.__fetch_w_coord(b_item.private_next_coord).private_prev_coord = deepcopy(a_coord)
+            b_item.private_next_coord = deepcopy(a_coord)
+            #print("After:")
+            #a_item.crq_print()
+            #b_item.crq_print()
+            #print("")
+        else:   
+            if a_item.private_prev_coord:
+                self.__fetch_w_coord(a_item.private_prev_coord).private_next_coord.replace(b_coord)
+            if a_item.private_next_coord:
+                self.__fetch_w_coord(a_item.private_next_coord).private_prev_coord.replace(b_coord)
+            if b_item.private_prev_coord:
+                self.__fetch_w_coord(b_item.private_prev_coord).private_next_coord.replace(a_coord)
+            if b_item.private_next_coord:
+                self.__fetch_w_coord(b_item.private_next_coord).private_prev_coord.replace(a_coord)
+            a_item.private_prev_coord = b_prev_coord
+            b_item.private_prev_coord = a_prev_coord
+            a_item.private_next_coord = b_next_coord
+            b_item.private_next_coord = a_next_coord
+        if (__a_ind == 0):
+            self.first_coord = b_coord
+        if (__b_ind == 0):
+            self.first_coord = a_coord    
+        if (__a_ind == self.length - 1):
+            self.last_coord = b_coord
+        if (__b_ind == self.length - 1):
+            self.last_coord = a_coord
+
+    def move(self, ind: int, dest: int):
+        if self.is_itering:
+            raise ValueError("Cannot move while iterating.")
+        if (ind > self.length - 1 or dest > self.length - 1):
+            raise IndexError(f"Index out of range.")
+        if (ind == dest):
+            return
+        
+        if (ind > dest):
+            for i in range(ind - dest):
+                self.swap(ind-i, ind-i-1)
+        if (ind < dest):
+            for i in range(dest - ind):
+                self.swap(ind+i, ind+i+1)
+
+
     def __find_for_reclaim(self) -> None | TableCoord:
         if self.earliest_discard is None:
             return None
         out = TableCoord.copy(self.earliest_discard)
-        for i in range(self.earliest_discard.super_ind, len(self.table)):
+        for i in range(self.earliest_discard.super_ind, len(self.__table)):
             for j in range(self.earliest_discard.sub_ind, self.cluster_size):
                 if (i == out.super_ind and j == out.sub_ind):
                     continue
-                if self.table[i][j] == self.none_object_creation_call():
+                if self.__table[i][j] == self.none_object_creation_call():
                     if self.earliest_discard:
                         self.earliest_discard.override(i, j)
                     else:
@@ -335,7 +455,6 @@ class ClusteredReclaimingList:
 
     def __reclaim_popleft(self) -> TableCoord:
         out: TableCoord =  TableCoord.from_reclaim_coord(self.reclaim_queue[0])
-        #self.__print_reclaim()
         for i in range(self.reclaim_queue_len - 1):
             self.reclaim_queue[i].replace(self.reclaim_queue[i + 1])
         self.reclaim_queue[self.reclaim_queue_len - 1].clear()
@@ -346,11 +465,11 @@ class ClusteredReclaimingList:
         
     
     def __place(self, item, super_ind, sub_ind):
-        if super_ind >= len(self.table) or sub_ind >= len(self.table[super_ind]):
+        if super_ind >= len(self.__table) or sub_ind >= len(self.__table[super_ind]) or super_ind < 0 or sub_ind < 0:
             raise IndexError(f"Index out of range. Super_ind: {super_ind}, sub_ind: {sub_ind}")
-        self.table[super_ind][sub_ind] = item
+        self.__table[super_ind][sub_ind] = item
     
     def __fetch(self, super_ind, sub_ind) -> CRQPosTracker:
-        if super_ind >= len(self.table) or sub_ind >= len(self.table[super_ind]):
+        if super_ind >= len(self.__table) or sub_ind >= len(self.__table[super_ind]) or super_ind < 0 or sub_ind < 0:
             raise IndexError(f"Index out of range. Super_ind: {super_ind}, sub_ind: {sub_ind}")
-        return self.table[super_ind][sub_ind] 
+        return self.__table[super_ind][sub_ind] 

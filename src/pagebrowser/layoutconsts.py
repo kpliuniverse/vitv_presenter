@@ -1,12 +1,18 @@
 
 
-class GridPagesConstants:
-    GRID_PAGES_PAD: int = 10
-    
+#Pages constants
 
-class ToolBarConstants:
-    TOOLBAR_HEIGHT: int = 70
+GRID_ROW_PAD: int = 10
+GRID_PAGES_PAD: int = 10
+SMALL_THUMB_PAD: int = 20
+SMALL_THUMB_SIZE: int = 60
+SMALL_THUMB_PIXEL_LENGTH: int = SMALL_THUMB_SIZE * SMALL_THUMB_SIZE
+LARGE_THUMB_SIZE: int = 120
+LARGE_THUMB_PIXEL_LENGTH: int = LARGE_THUMB_SIZE * LARGE_THUMB_SIZE
+
+#Toolbar constants
+TOOLBAR_HEIGHT: int = 70
 
 
-class MenuConstants:
-    MENU_BAR_PAD: int = 5
+#Menu constants
+MENU_BAR_PAD: int = 5
