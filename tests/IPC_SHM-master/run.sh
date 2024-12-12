@@ -1,2 +1,0 @@
-./write
-python read.py
