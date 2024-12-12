@@ -1,4 +1,5 @@
 /.venv
+*.temp/
 *.temp
 /build
 **/__pycache__/
