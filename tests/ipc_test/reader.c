@@ -24,16 +24,16 @@ const char PGBROWSER_RELPATH[] = "app";
 #define PATH_MAX 1024
 #define SHM_SIZE 64
 
-
 struct ShmemResult {
     int result;
     char* shmem;
     char* file_name;
+    int shmem_fd;
 };
 typedef struct ShmemResult ShmemResult;
-ShmemResult create_share_memory() {
+ShmemResult create_shared_memory() {
 
-    ShmemResult out = {0, NULL, NULL};
+    ShmemResult out = {0, NULL, NULL, -1};
     // Get the path of the executable
     char exe_path[PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
@@ -72,11 +72,14 @@ ShmemResult create_share_memory() {
     }
     out.shmem = shmem;
     out.file_name = temp_path_tplate;
+    out.shmem_fd = shmem_fd;
     return out;
 
 }
 
 
+#define SIGNAL_NONE 0
+#define SIGNAL_ONE 1
 
 
 int main() {
@@ -100,29 +103,51 @@ int main() {
         perror("Failed fetching");
         
     }
-
+    ShmemResult shmem = create_shared_memory();
+    char args[PATH_MAX];
+    snprintf(args, sizeof(args), "%s", shmem.file_name);
     pid_t child_pid = fork();
     if (child_pid < 0 ) {
-        perror("Launcher failed to fork a child process, which is used to launch the PageBrowser");
+        perror("Launcher failed to fork a child process, which is used to launch the PageBrowser\n");
         exit(1);
     }
     else if (child_pid == 0 /*IS CHILD*/) {
-        char full_cmd[PATH_MAX];
-        snprintf(full_cmd, sizeof(full_cmd), "test", pgbrowser_path);
-        execlp(pgbrowser_path, full_cmd);
-        perror("Launcher failed to execute the PageBrowser");
+        execlp(pgbrowser_path, args);
+        perror("Launcher failed to execute the PageBrowser\n");
     }
     else {
         pid_t child_exit_code;
+
+        char signal;
         //IS PARENT
         while (1) {
-            printf("Awake, responding to received messages");
-            
+            printf("Awake, responding to received messages\n");
+            signal = (char)shmem.shmem[0]; 
+            printf("Signal %u\n", signal);
+            switch(signal) {
+                case SIGNAL_NONE:
+                    printf("No Signal\n");
+                    break;
+                case SIGNAL_ONE:
+                    printf("Signal 1 Received\n");
+                    printf("Message:\n");
+                    char msg[SHM_SIZE];
+                    for (int i = 0; i < SHM_SIZE; i++) {
+                        msg[i] = shmem.shmem[i + 1];
+                        shmem.shmem[i + 1] = 0;
+                        if (msg[i] == 0) break;
+                    }
+                    shmem.shmem[0] = SIGNAL_NONE;
+                    printf("%s\n", msg);
+                    break;
+                default:
+                    printf("Unknown Signal\n");
+            }
             if(waitpid(child_pid, &child_exit_code, WNOHANG) > 0) {
-                printf("Child process has exited, launcher will terminate.");
+                printf("Child process has exited, launcher will terminate.\n");
                 break;
             }
-            printf("Sleeping");
+            printf("Sleeping\n");
             sleep(3);
 
         }   
@@ -134,6 +159,21 @@ int main() {
     #else
         #error You are compiling in an unsupported system. Supported: (Linux, Windows)
     #endif
+    
+
+    if (munmap(shmem.shmem, SHM_SIZE) == -1) {
+        perror("munmap failed");
+        close(shmem.shmem_fd);
+        exit(EXIT_FAILURE);
+
+    }
+    close(shmem.shmem_fd);
+    if (unlink(shmem.file_name) == -1) {
+        perror("unlink failed");
+        close(shmem.shmem_fd);
+        exit(EXIT_FAILURE);
+    }
+     
     return 0;
 
 }
