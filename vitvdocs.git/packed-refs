@@ -1,0 +1,3 @@
+# pack-refs with: peeled fully-peeled sorted 
+ccd71d0125fad7325cf9ecee94f3caa46df2757f refs/heads/gitignore_test
+ccd71d0125fad7325cf9ecee94f3caa46df2757f refs/heads/main
