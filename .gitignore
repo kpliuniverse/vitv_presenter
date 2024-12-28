@@ -3,3 +3,4 @@
 *.temp
 /build
 **/__pycache__/
+/src/presentationeditor/presentationeditor/target/
