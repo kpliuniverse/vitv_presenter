@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from typing import Callable
 import PIL
 import PIL.IcnsImagePlugin
 import PIL.Image
@@ -8,7 +9,7 @@ import PIL.ImageTk
 import layoutconsts
 from compoundgui import SmallThumbnail, Thumbnail
 import colorconsts
-from pagesarea import PagesArea
+from slidesarea import SlidesArea
 
 
 
@@ -23,14 +24,13 @@ class MainApp:
     menu_bar: tk.Menu
     tool_bar: tk.Frame 
     pages_area_frame: tk.Frame
-    pages_area_class: PagesArea
-
+    slides_area_class: SlidesArea
     menus: dict[str, tk.Menu] = dict()
 
     menu_cascades_table = (
         ("FILE", "File"),
         ("ABOUT", "About"),
-        {"TEST", "Test"}
+        ("TEST", "Test")
     )
 
     def file_menu(self):
@@ -47,17 +47,32 @@ class MainApp:
         self.menus["ABOUT"].add_command(label = "About this software", command = None)
         self.menus["TEST"].add_command(label = "Open sample program via launcher")
 
+    def enforce_sash_limits(self, event):
+        pass
+    def end_stick(self, event):
+        self.stick_the_sash_argh()
+
+    def stick_the_sash_argh(self):
+       
+        if (self.main_paned_win.sashpos(0) < layoutconsts.MIN_SLIDES_AREA_WIDTH):
+            self.main_paned_win.sashpos(0, layoutconsts.MIN_SLIDES_AREA_WIDTH)
+            self.main_win.update_idletasks()
+                
+
     def init_pagebrowser(self):
         self.main_paned_win = ttk.PanedWindow(self.pages_area_frame, orient=tk.HORIZONTAL)
-        self.pages_pane = tk.Frame(self.main_paned_win, bg=colorconsts.BG_COLOR)
-        self.pages_pane.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.main_paned_win.add(self.pages_pane, weight=3)
+        self.slides_pane = tk.Frame(self.main_paned_win, bg=colorconsts.BG_COLOR)
+        self.slides_pane.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.main_paned_win.add(self.slides_pane, weight=3)
         self.preview_pane = tk.Frame(self.main_paned_win, bg="magenta")
         self.preview_pane.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.main_paned_win.add(self.preview_pane, weight=2)
         self.main_paned_win.pack(fill=tk.BOTH, expand=True)
-        self.pages_area_class = PagesArea(self.pages_pane)
-        self.pages_area_class.pack(fill=tk.BOTH, expand=True)
+        self.slides_area_class = SlidesArea(self.slides_pane)
+        self.slides_area_class.pack(fill=tk.BOTH, expand=True)
+        self.mainpanedwin_sashpos = self.main_paned_win.sashpos(0)
+        self.main_paned_win.bind("<B1-Motion>", self.enforce_sash_limits)
+        self.main_paned_win.bind("<ButtonRelease-1>", self.end_stick)
 
     def select(self, thumb: SmallThumbnail):
         thumb.selected_appearance(True)
@@ -67,9 +82,6 @@ class MainApp:
     def __init__(self):
         path: str = "assets/sampprev.png" 
         self.test_thumb_img: PIL.Image.Image
-        with PIL.Image.open(path) as img:
-            img = img.resize((layoutconsts.SMALL_THUMB_SIZE, layoutconsts.SMALL_THUMB_SIZE), PIL.Image.Resampling.LANCZOS)
-            self.s_img = PIL.ImageTk.PhotoImage(img)
         self.main_win.geometry("1600x900")
         self.menu_bar =  tk.Menu(self.main_win)
         self.init_menus()
@@ -87,6 +99,14 @@ class MainApp:
 
         
         
+
+    def on_launch(self):
+        self.slides_area_class.first_calc()
+        self.last_w = self.main_win.winfo_width()
+        self.last_h = self.main_win.winfo_height()
+
     def run(self): 
+        self.main_win.after(1, self.on_launch)
         self.main_win.mainloop()
         
+

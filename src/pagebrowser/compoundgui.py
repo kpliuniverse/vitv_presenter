@@ -14,6 +14,7 @@ import colorconsts as colconsts
 
 
 class SmallThumbnail:
+    thumb_img: PIL.ImageTk.PhotoImage
 
     def selected_appearance(self, selected: bool):
         if selected:
@@ -36,8 +37,11 @@ class SmallThumbnail:
         self.thumb_centerer = tk.Frame(self.frame, width=SMALL_THUMB_SIZE + SMALL_THUMB_PAD, height=SMALL_THUMB_SIZE)
         self.thumb_centerer.grid_propagate(False)  # Prevent this frame from resizing based on contents
         
+        
+        
         # Add the thumbnail label inside the centerer frame
-        self.thumbnail = tk.Label(self.thumb_centerer, image=thumb_img, width=SMALL_THUMB_SIZE, height=SMALL_THUMB_SIZE)
+        self.thumb_img = thumb_img
+        self.thumbnail = tk.Label(self.thumb_centerer, image=self.thumb_img, width=SMALL_THUMB_SIZE, height=SMALL_THUMB_SIZE)
         self.thumbnail.grid(row=0, column=0, sticky="nsew", padx = SMALL_THUMB_PAD // 2)
         
         # Configure grid weight to prevent thumbnail from expanding beyond size
@@ -56,7 +60,7 @@ class SmallThumbnail:
         self.frame.grid_rowconfigure(1, weight=1)  # Allow the label to grow
         self.frame.grid_columnconfigure(0, weight=1)  # Allow the column to expand
 
-        self.frame.bind("<Button-1>", lambda evt: on_click(self))
+        self.frame.bind("<Button-1>", lambda evt: on_click(self) )
 
         for w in (self.thumb_centerer, self.thumbnail, self.label):
             w.bind("<Button-1>", lambda e: propagate_parent(e, "<Button-1>"))
@@ -65,6 +69,6 @@ class SmallThumbnail:
     
 class Thumbnail:
     def __init__(self, root, thumb_img: PIL.ImageTk.PhotoImage, label: str, on_click: Callable[["Thumbnail"], None]):
-
+        #Note, this only accepts SMALL_THUMB_SIZE images for now 
         self.small_thumb = SmallThumbnail(root, thumb_img, label, on_click)
         

@@ -7,28 +7,25 @@ import PIL.ImageTk
 from clusteredreclaiminglist import CRQPosTracker
 from layoutconsts import SMALL_THUMB_PIXEL_LENGTH, LARGE_THUMB_PIXEL_LENGTH
 import dummy
+from pagebrowser import vitvimage
 from pagebrowser.compoundgui import Thumbnail
-from pagebrowser.docinfo import VitVDocInfo
+from pagebrowser.presinfo import VitVPresInfo
+from pagebrowser.vitvimage import blank_img
 
 @dataclass
-class Page(CRQPosTracker):
+class Slide(CRQPosTracker):
 
-    vitv_doc: VitVDocInfo 
-    orig_prev: PIL.ImageTk.PhotoImage
-    thumb: Thumbnail = Thumbnail(
-        dummy.dummy_frame,
-        None,
-        "",
-        lambda _: None
-    )
+    vitv_presentation: VitVPresInfo 
+    orig_prev_upload_id: int
     selected: bool = False
     blank: bool = False
 
 
         
     @staticmethod
-    def blank_page() -> "Page":
-        return Page(
-            VitVDocInfo.blank(),
+    def blank_page() -> "Slide":
+        return Slide(
+            VitVPresInfo.blank(),
+            orig_prev = None,
             blank=True
         )

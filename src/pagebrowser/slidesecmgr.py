@@ -12,7 +12,7 @@ from appconsts import MAX_PAGE_SEC_NAME_LIMIT, DEFAULT_RECLAIM_SLOTS, SECTION_AR
 from idorder import IDOrder
 from clusteredreclaiminglist import ClusteredReclaimingList, CRQPosTracker
 from layoutconsts import SMALL_THUMB_PIXEL_LENGTH, LARGE_THUMB_PIXEL_LENGTH
-from pageclass import Page
+from pagebrowser.slideclass import Slide
 
 
 validate_section_name = vitvstring.create_consistent_size_int_tuple_from_string_callable(MAX_PAGE_SEC_NAME_LIMIT)
@@ -24,7 +24,7 @@ class PageSecInfo(CRQPosTracker):
         self.section_name_in_array: NDArray[np.int32]  = self.validate_section_name(section_name)
         self.range_start = 0
         self.range_end = 0
-        self.blank = blank
+        self.is_blank = blank
 
     @staticmethod
     def blank():
