@@ -19,12 +19,14 @@ public class CurCanvas {
 
     
     //vars and stuff
+    public Dimension size;
     public JPanel panel;
     // Private constructor to prevent instantiation from outside the class.
     private CurCanvas() {
         this.panel = new JPanel();
-        this.panel.setBackground(Color.white);
-        this.panel.setPreferredSize(new Dimension(1500, 1500));
+        this.panel.setBackground(Color.red);
+        this.panel.setPreferredSize(new Dimension(300, 3000));
+        this.panel.setLayout(null);
         
     }
 

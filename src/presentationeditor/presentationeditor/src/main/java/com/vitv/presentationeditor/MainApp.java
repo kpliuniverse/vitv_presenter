@@ -4,11 +4,19 @@
  */
 package com.vitv.presentationeditor;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
+import java.awt.GridBagLayout;
+import java.awt.Point;
+import java.awt.event.MouseListener;
 import javax.swing.JDesktopPane;
+import javax.swing.JScrollPane;
 import javax.swing.JInternalFrame;
 import javax.swing.JPanel;
+import javax.swing.JViewport;
 
 /**
  *
@@ -27,12 +35,41 @@ public final class MainApp extends javax.swing.JFrame {
 
     }
     
+    
+    private JPanel canvasPaneViewport, subCPV;
+    private JPanel curCanvas;
+    
+    void initCanvasPanel() {
+        canvasPaneViewport = new JPanel();
+        canvasPaneViewport.setLayout(new GridBagLayout());
+        subCPV = new JPanel();
+        subCPV.setLayout(new FlowLayout());
+        canvasPaneViewport.add(subCPV);
+       
+        
+    }
     void createCanvas() {
         
-        JPanel canvPanel = CurCanvas.getInstance().panel;
-        canvPanel.setVisible(true);
-        canvasPane.add(canvPanel);
+        curCanvas = CurCanvas.getInstance().panel;
+        curCanvas.setVisible(true);
+        subCPV.add(curCanvas, BorderLayout.CENTER);
+        // Create a JPanel to hold a list of labels.
+
+      
         
+    }
+    
+    void makeCanvasInFrameUndraggable() {
+        for(MouseListener listener : ((javax.swing.plaf.basic.BasicInternalFrameUI) this.canvasInFrame.getUI()).getNorthPane().getMouseListeners()){
+            javax.swing.plaf.basic.BasicInternalFrameUI t = ((javax.swing.plaf.basic.BasicInternalFrameUI) this.canvasInFrame.getUI());
+            t.getNorthPane().removeMouseListener(listener);
+            
+            //t.getSouthPane().removeMouseListener(listener);
+            //t.getEastPane().removeMouseListener(listener);
+            //t.getWestPane().removeMouseListener(listener);
+        }
+        javax.swing.plaf.basic.BasicInternalFrameUI x = ((javax.swing.plaf.basic.BasicInternalFrameUI) this.canvasInFrame.getUI());
+        x.setNorthPane(null); x.setSouthPane(null); x.setEastPane(null); x.setWestPane(null);
     }
     /**
      * Creates new form MainApp
@@ -40,8 +77,16 @@ public final class MainApp extends javax.swing.JFrame {
     public MainApp() {
         initComponents();
         addExFrame();
+        this.makeCanvasInFrameUndraggable();
         toolBar.setFloatable(false);
-        canvasPane.setLayout(null);
+        JViewport canvasViewport = canvasPane.getViewport();
+        //canvasViewport.setLayout(null);
+        canvasInFrame.setLayout(new BorderLayout());
+        createCanvas();
+        //canvasPane.setBounds(10, 10, 150, 150);
+        //canvasPaneViewport.setPreferredSize(new Dimension (10, 10));
+        canvasInFrame.remove(canvasPane);
+        canvasInFrame.add(canvasPane, BorderLayout.CENTER);
     }
 
     /**
@@ -62,7 +107,11 @@ public final class MainApp extends javax.swing.JFrame {
             }
         };
         canvasInFrame = new javax.swing.JInternalFrame();
-        canvasPane = new javax.swing.JScrollPane();
+        canvasInFrame.setBackground(Color.decode("#555555"));
+        canvasInFrame.setOpaque(true);
+        this.initCanvasPanel();
+        canvasPane = new javax.swing.JScrollPane(this.canvasPaneViewport);
+        canvasPane.getViewport().setBackground(ColorConsts.WORKSPACE_BG);
         toolBar = new javax.swing.JToolBar();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -70,10 +119,13 @@ public final class MainApp extends javax.swing.JFrame {
         workSpace.setBackground(new java.awt.Color(179, 179, 179));
         workSpace.setDesktopManager(new javax.swing.DefaultDesktopManager());
 
+        canvasInFrame.setBackground(new java.awt.Color(85, 85, 85));
         canvasInFrame.setBorder(null);
+        canvasInFrame.setEnabled(false);
         canvasInFrame.setVisible(true);
 
-        canvasPane.setBackground(new java.awt.Color(122, 122, 122));
+        canvasPane.setBackground(new java.awt.Color(85, 85, 85));
+        canvasPane.setBorder(null);
 
         javax.swing.GroupLayout canvasInFrameLayout = new javax.swing.GroupLayout(canvasInFrame.getContentPane());
         canvasInFrame.getContentPane().setLayout(canvasInFrameLayout);
@@ -83,7 +135,7 @@ public final class MainApp extends javax.swing.JFrame {
         );
         canvasInFrameLayout.setVerticalGroup(
             canvasInFrameLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(canvasPane, javax.swing.GroupLayout.DEFAULT_SIZE, 409, Short.MAX_VALUE)
+            .addComponent(canvasPane, javax.swing.GroupLayout.DEFAULT_SIZE, 395, Short.MAX_VALUE)
         );
 
         workSpace.setLayer(canvasInFrame, javax.swing.JLayeredPane.DEFAULT_LAYER);
@@ -106,7 +158,7 @@ public final class MainApp extends javax.swing.JFrame {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addComponent(workSpace)
-            .addComponent(toolBar, javax.swing.GroupLayout.DEFAULT_SIZE, 812, Short.MAX_VALUE)
+            .addComponent(toolBar, javax.swing.GroupLayout.DEFAULT_SIZE, 800, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
