@@ -1,0 +1,1 @@
+#define URUSAI 0
