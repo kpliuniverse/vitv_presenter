@@ -4,6 +4,10 @@
 
 package com.vitv.presentationeditor;
 
+import com.vitv.presentationeditor.DataClasses.InternalArgs.Args;
+import com.vitv.presentationeditor.DataClasses.PresInfo.PresInfoMother;
+import com.vitv.presentationeditor.XmlTools.ReadMother;
+
 import lombok.AllArgsConstructor;
 
 /**
@@ -12,7 +16,12 @@ import lombok.AllArgsConstructor;
  */
 public class Presentationeditor {
 
-    public static void main(String[] args) {
-        MainApp.main(args);
+    
+
+    public static void main(String[] cli_args) throws Exception {
+        Args args = new Args();
+        
+        args.presInfoMother = ReadMother.readMotherXML();
+        MainApp.main(args, cli_args);
     }
 }

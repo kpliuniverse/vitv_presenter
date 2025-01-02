@@ -4,6 +4,7 @@
  */
 package com.vitv.presentationeditor;
 
+import com.vitv.presentationeditor.DataClasses.InternalArgs.Args;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -81,17 +82,19 @@ public final class MainApp extends javax.swing.JFrame {
     
     // Store the last known width and divider position
     private int lastWidth;
-    public MainApp() {
+    public MainApp(Args inArgs) {
         initComponents();
         lastWidth = mainSP.getWidth();
         addInFrame();
         this.makeCanvasInFrameUndraggable();
         toolBar.setFloatable(false);
         canvasInFrame.setLayout(new BorderLayout());
+        CurCanvas.initInstance(inArgs.presInfoMother);
         createCanvas();
         canvasInFrame.remove(canvasPane);
         canvasInFrame.add(canvasPane, BorderLayout.CENTER);
         mainSP.addComponentListener(new ComponentAdapter() {
+            
             @Override
             public void componentResized(ComponentEvent e) {
                 float ratio = (float) mainSP.getDividerLocation() / (float) lastWidth;
@@ -199,7 +202,9 @@ public final class MainApp extends javax.swing.JFrame {
     /**
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
+    public static void main(Args inArgs ,String[] cliArgs) {
+        
+        System.setProperty("sun.java2d.uiScale", "2");
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
@@ -222,11 +227,12 @@ public final class MainApp extends javax.swing.JFrame {
             java.util.logging.Logger.getLogger(MainApp.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>
-
+        
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
+            
             public void run() {
-                new MainApp().setVisible(true);
+                new MainApp(inArgs).setVisible(true);
             }
         });
     }

@@ -1,5 +1,5 @@
 
-package com.vitv.presentationeditor;
+package com.vitv.presentationeditor.MiscTools;
 
 import java.io.InputStream;
 import java.util.function.Consumer;
