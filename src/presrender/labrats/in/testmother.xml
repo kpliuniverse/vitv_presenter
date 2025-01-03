@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<pres xmlns="http://res.vitv.org"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://res.vitv.org ../../src/schema/vitvpresmother.xsd"
+>
+    <info 
+        w="1200" 
+        h="900" 
+    />
+</pres>
